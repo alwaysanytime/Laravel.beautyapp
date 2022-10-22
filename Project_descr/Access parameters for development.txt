@@ -1,0 +1,18 @@
+Online access:
+https://beautyapp.dyndns.org/
+
+Username:		beautyapp
+Password:		BeautyApp99!
+
+MySQL acces:
+Host:				beautyapp.dyndns.org
+Port:				3306
+Username:		beautyapp
+Password:		LZEU9GCppcCVuSMU
+
+FTP Access:
+
+Host:				beautyapp.dyndns.org
+Port:				21
+Username:		beautyapp
+Password:		BeautyApp99!
