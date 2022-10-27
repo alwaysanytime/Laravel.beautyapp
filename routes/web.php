@@ -211,7 +211,8 @@ Route::prefix('backend')->group(function () {
     //Global
     Route::post('/userActive', 'Backend\GlobalController@userActive')->name('backend.userActive')->middleware('auth');
     Route::post('/calendar-details', 'Backend\CalendarController@showAppointmentsDetail')->name('backend.calendarDetails')->middleware('auth');
-    Route::post('/SaveAppointment', 'Backend\CalendarController@saveAppointment')->name('backend.saveappointment')->middleware('auth');
+    Route::post('/updateAppointment', 'Backend\CalendarController@updateAppointment')->name('backend.updateAppointment')->middleware('auth');
+    Route::post('/updateAgreement', 'Backend\CalendarController@updateAgreement')->name('backend.updateAgreement')->middleware('auth');
 
     //Chatting Page
     /*

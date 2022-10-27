@@ -37,14 +37,14 @@ class CalendarController extends Controller
 
         $data_agr = DB::table('agreements')
             // ->join("users", "appointments.lastuser", "=", "users.id", "left outer")// KATEGORI RENKLERI
-            ->select("agreements.agreementid","agreements.agreedate","agreements.category","agreements.areas","agreements.notes as agrnotes","agreements.price as agrprice","agreements.payment")
+            ->select("agreements.id","agreements.agreementid","agreements.agreedate","agreements.category","agreements.areas","agreements.notes as agrnotes","agreements.price as agrprice","agreements.therapist as agrtherapist","agreements.payment" ,"agreements.lastuser","agreements.lastupdate")
             ->where("agreements.agreementid","=", $agreement_id)
             ->orWhere("agreements.customerid","=",$customer_id)
             ->get();
 
         $data_app = DB::table('appointments')
             // ->join("users", "appointments.lastuser", "=", "users.id", "left outer")// KATEGORI RENKLERI
-            ->select('appointments.id','appointments.subject',"appointments.agreementid","appointments.customerid", "appointments.starttime", "appointments.endtime", "appointments.notes", "appointments.therapist","appointments.treatments", "appointments.price", "appointments.paymethod", "appointments.paidamount","appointments.appointtype","appointments.sendsms","appointments.nopayment", "appointments.lastupdate","appointments.lastuser", /*"appointtype.Descr","appointtype.color","appointtype.fontcolor"*/)
+            ->select('appointments.id','appointments.appointid',"appointments.agreementid",'appointments.subject',"appointments.customerid", "appointments.starttime", "appointments.endtime", "appointments.notes", "appointments.therapist","appointments.treatments", "appointments.price", "appointments.paymethod", "appointments.paidamount","appointments.appointtype","appointments.sendsms","appointments.nopayment", "appointments.lastupdate","appointments.lastuser", /*"appointtype.Descr","appointtype.color","appointtype.fontcolor"*/)
             ->where("appointments.customerid","=", $customer_id)
             ->orderBy('appointments.starttime',"DESC")
             ->get();
@@ -65,8 +65,47 @@ class CalendarController extends Controller
             ->get();
         return view("backend.calendar-details", compact(["data_app","data_agr","data_apptypes","data_areas","data_users","customer_id"]));
     }
-    public function saveAppointment(Request $request){
+    public function updateAgreement(Request $request){
+        
+        $id = $request->id;
+        $agreementid = $request->agreementid;
+        $agreedate = date_create($request->agreedate);
+        $agreedate = date_format($agreedate,"Y-m-d");
+        $category = $request->category;
+        $areas = $request->areas;
+        $therapist = $request->therapist;
+        $notes = $request->notes;
+        $price = $request->price;
+        
+        
+        date_default_timezone_set("Europe/berlin");
 
+        $data = array(
+            "agreedate" => $agreedate, 
+            "category" => $category,
+            'areas' => $areas, 
+            "therapist" => $therapist,
+            "notes" => $notes,
+            "price" => intval($price), 
+            "lastupdate" => date("Y-m-d H:i:s"),
+        );
+
+        $updatedapp = DB::table('agreements')
+        ->where('id', intval($id))
+        ->update($data);
+        if ($updatedapp) {
+            $res['msgType'] = 'success';
+            $res['msg'] = __('Data Updated Successfully');
+        } else {
+            $res['msgType'] = 'error';
+            $res['msg'] = __('Data update failed');
+        }
+        return response()->json($res);
+    }
+    
+    public function updateAppointment(Request $request){
+
+        $id = $request->id;
         $appointmentId = $request->appointmentId;
         $agreementid = $request->agreementid;
         $starttime = date_create($request->starttime);
@@ -97,8 +136,9 @@ class CalendarController extends Controller
         //         ]);
         
         $updatedapp = DB::table('appointments')
-        ->where('id', intval($appointmentId))
+        ->where('id', intval($id))
         ->update([ 
+                    "agreementid" => intval($agreementid),
                     "starttime" => $starttime, 
                     "endtime" => $endtime,
                     'therapist' => $therapist, 
