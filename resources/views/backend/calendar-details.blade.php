@@ -106,7 +106,7 @@
                                     foreach ($data_app as $appointment):?>
                                     <tr id = "treatment">
                                         <td hidden><?= $i++?></td>
-                                        <td><?=gmdate("d.m.Y H:i:s", strtotime($appointment->starttime))?>{{--<hr><?=gmdate("H:i:s", strtotime($appointment->endtime))?>--}}</td>
+                                        <td><?= $appointment->starttime//gmdate("d/m/Y H:i:s", strtotime())?>{{--<hr><?=gmdate("H:i:s", strtotime($appointment->endtime))?>--}}</td>
                                         <td><?=$appointment->therapist?></td>
                                         <td><?=$appointment->notes?></td>
                                         <td><?=$appointment->agreementid?></td>
@@ -473,25 +473,28 @@
                     }
                     $( "#selectAgrCategory" ).empty().append(selectCategoryDom);
 
-                    // agrTherapist = agrArray[RowAgrIndex]['agrtherapist'];
-                    agrTherapist = selector.find('td:eq(4)').text();
+                    agrTherapist = agrArray[RowAgrIndex]['agrtherapist'];
+                    // agrTherapist = selector.find('td:eq(4)').text();
                     $("#inputAgrTherapist").val(agrTherapist);
 
-                    agrArea = agrArray[RowAgrIndex]['areas'];
+                    // agrArea = agrArray[RowAgrIndex]['areas'];
+                    agrArea = selector.find('td:eq(4)').text();
                     $("#inputAgrArea").val(agrArea);
                     
-                    agrNote = agrArray[RowAgrIndex]['agrnotes'];
+                    // agrNote = agrArray[RowAgrIndex]['agrnotes'];
+                    agrNote = selector.find('td:eq(5)').text();
                     $("#textAgrNote").val(agrNote);
                     
-                    agrTotalamount = agrArray[RowAgrIndex]['agrprice'];
+                    // agrTotalamount = agrArray[RowAgrIndex]['agrprice'];
+                    agrTotalamount = selector.find('td:eq(6)').text();
                     $("#inputAgrTotalamount").val(agrTotalamount);
 
-                    console.log("last user",agrArray[RowAgrIndex]['lastuser'],usersArray.length); 
                     if(agrArray[RowAgrIndex]['lastuser'] != usersArray.length){
                         agrLastuserupdated = "";//"null,am" + agrArray[RowAgrIndex]['lastupdate'];
-                    } else {
-                        agrLastuserupdated = usersArray[agrArray[RowAgrIndex]['lastuser']]['name'] + ",am" + agrArray[RowAgrIndex]['lastupdate'];
-                    }
+                    } 
+                    // else {
+                    //     agrLastuserupdated = usersArray[agrArray[RowAgrIndex]['lastuser']]['name'] + ",am" + agrArray[RowAgrIndex]['lastupdate'];
+                    // }
                     
                     $("#lblAgrupdated").text(agrLastuserupdated);
 
@@ -502,6 +505,9 @@
                 $('#details_appointments td').dblclick(function(){
 
                     RowAppIndex = $(this).parent().index();
+                    var selector = $(this).closest('tr');
+                    
+
                     var i = 0;
                     appID = appArray[RowAppIndex]['id'];
                     appointmentId = appArray[RowAppIndex]['appointid'];
@@ -511,7 +517,7 @@
                         selectAgreementDom += "<option value = '";
                         selectAgreementDom += i;
                         selectAgreementDom += "'";
-                        if(agrArray[i]['agreementid'] == appArray[RowAppIndex]['agreementid']){
+                        if(agrArray[i]['agreementid'] == selector.find('td:eq(4)').text()){
                             selectAgreementDom += " selected ";
                         }
                         selectAgreementDom +=">";
@@ -526,7 +532,8 @@
                     }
                     $( "#selectAgreement" ).empty().append(selectAgreementDom);
 
-                    starttime = new Date(appArray[RowAppIndex]['starttime']);
+                    // starttime = new Date(appArray[RowAppIndex]['starttime']);
+                    starttime = new Date(selector.find('td:eq(1)').text());
                     endtime = new Date(appArray[RowAppIndex]['endtime']);
                     $("#datepicker").val(starttime.toLocaleDateString());
                     $("#starttimepicker").val(starttime.getHours()+":"+starttime.getMinutes());
@@ -540,7 +547,7 @@
                         selectCategoryDom += "<option value = '"
                         selectCategoryDom += i;
                         selectCategoryDom += "'";
-                        if(i==RowAppIndex){
+                        if(apptypesArray[RowAppIndex]['Descr']==apptypesArray[i]['Descr']){
                             selectCategoryDom += " selected ";
                         }
                         selectCategoryDom +=">";
@@ -560,12 +567,14 @@
                         i++;
                     }
 
-                    $("#inputArea").val(appArray[RowAppIndex]['treatments']);
+                    $("#inputArea").val(selector.find('td:eq(5)').text());
 
-                    therapist = appArray[RowAppIndex]['therapist'];
+                    // therapist = appArray[RowAppIndex]['therapist'];
+                    therapist = selector.find('td:eq(2)').text();
                     $("#selectTherapist").val(therapist);
                     
                     textNote = appArray[RowAppIndex]['notes'];
+                    textNote = selector.find('td:eq(3)').text();
                     $("#textNote").val(textNote);
 
                     sendsms = appArray[RowAppIndex]['sendsms'];
@@ -577,16 +586,17 @@
                     if(nopayment == 1){
                         $('#checknopayment').prop('checked', true);
                     }
-                    
+                    console.log(appArray[RowAppIndex]['lastuser']);
                     if(appArray[RowAppIndex]['lastuser'] != usersArray.length){
                         lastuserupdated = "null,am" + appArray[RowAppIndex]['lastupdate'];
-                    } else {
-                        lastuserupdated = usersArray[appArray[RowAppIndex]['lastuser']]['name'] + ",am" + appArray[RowAppIndex]['lastupdate'];
-                    }
+                    } 
+                    // else {
+                    //     lastuserupdated = usersArray[appArray[RowAppIndex]['lastuser']]['name'] + ",am" + appArray[RowAppIndex]['lastupdate'];
+                    // }
                     
                     $("#lblupdated").text(lastuserupdated);
 
-                    var treatmentArray = appArray[RowAppIndex]['treatments'].split("  ");
+                    var treatmentArray = selector.find('td:eq(5)').text().split("  ");
                     var secondgroup = [];
                     var treatmentsArray = [];
                     var treatmentDOM = "";
@@ -636,10 +646,12 @@
                     
                     $('#tbltreatment > tbody:last-child').empty().append(treatmentDOM);
 
-                    inputTotalamount = appArray[RowAppIndex]['price'];
+                    // inputTotalamount = appArray[RowAppIndex]['price'];
+                    inputTotalamount = selector.find('td:eq(6)').text();
                     $("#inputTotalamount").val(inputTotalamount);
 
-                    inputPaidamount = appArray[RowAppIndex]['paidamount'];
+                    // inputPaidamount = appArray[RowAppIndex]['paidamount'];
+                    inputPaidamount = selector.find('td:eq(7)').text();
                     $("#inputPaidamount").val(inputPaidamount);
 
                     if(appArray[RowAppIndex]['paymethod'] == 0) {
@@ -654,7 +666,6 @@
 
                 $("#updateAgreementbtn").click(function(e){
                     e.preventDefault();
-                    console.log("AppID",agrID);
                     agrNo = $("#inputAgrNo").val();
                     
                     RowAgrIndex += 1;
