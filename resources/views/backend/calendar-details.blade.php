@@ -24,8 +24,20 @@
         }
         .table-height {
             height: 250px;
-
         }
+
+        #appointmentMenu {
+            /* position: absolute; */
+            display: none;
+        }
+        .wrap {
+            width: 90%;
+            display: block;
+            margin: 0 auto;
+        }
+
+
+
     </style>
 
     @endpush
@@ -103,8 +115,12 @@
                                     </thead>
                                     <tbody>
                                     <?php $i=0;
-                                    foreach ($data_app as $appointment):?>
+                                    foreach ($data_app as $appointment):
+                                    if($appointment->deleted == 1) { ?>
+                                    <tr id="treatment" style="color: red;">
+                                    <?php } else { ?>
                                     <tr id = "treatment">
+                                    <?php } ?>
                                         <td hidden><?= $i++?></td>
                                         <td><?= $appointment->starttime//gmdate("d/m/Y H:i:s", strtotime())?>{{--<hr><?=gmdate("H:i:s", strtotime($appointment->endtime))?>--}}</td>
                                         <td><?=$appointment->therapist?></td>
@@ -114,9 +130,15 @@
                                         <td><?=$appointment->price?></td>
                                         <td><?=$appointment->paidamount?></td>
                                     </tr>
-                                    <?php endforeach;?>
+                                    <?php  endforeach;?>
                                     </tbody>
                                 </table>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" id="appointmentMenu">
+                                    <a class="dropdown-item" id = "openAppointment" >Offnen(Open)</a>
+                                    <a class="dropdown-item" id = "deleteAppointment" >Loschen(Delete)</a>
+                                    <div class = "dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#">unwiderruflich Löschen</a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -356,6 +378,45 @@
         </div>
     </div>
 
+    <!-- Modal Delete Agreement-->
+    <div class="modal fade" id="modalDelAppointment" tabindex="-1" role="dialog" aria-labelledby="modalDeleteAppointTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalDeleteAppointTitle">Bestatigen</h5>
+                <button type="button" class="close cancelbtn" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-1">
+                    </div>
+                    <div class="col-md-10">
+                        <p>Mochten Sit</p>
+                        <p></p>
+                        <p>Maximi</p>
+                        <p>Modal body text goes here.</p>
+                        <div class="form-group row">
+                            <label for="staticEmail" class="col-sm-2 col-form-label">Delete Type</label>
+                            <div class="col-sm-10">
+                                <select class="form-control" id="selectDelTypes">
+                            </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id = "deleteAppointmentbtn" disabled>Speichern</button>
+                <button type="button" class="btn btn-secondary cancelbtn" >Abbrechen</button>
+            </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -383,9 +444,11 @@
                 var usersArray = <?php echo json_encode($data_users);?>;
                 var apptypesArray = <?php echo json_encode($data_apptypes);?>;
                 var areasArray = <?php echo json_encode($data_areas);?>;
+                var delTypesArray = <?php echo json_encode($data_deltypes);?>;
                 
                 var RowAgrIndex = 0;
                 var RowAppIndex = 0;
+                var selector = 0;
 
                 var agrTable = "#details_agreements";
                 var appTable = "#details_appointments";
@@ -413,10 +476,16 @@
                 var sendsms = 0;
                 var nopayment = 0;
 
+                var appdeltype = -1;
+
                 var selectAgreementDom = "";
                 var selectCategoryDom = "";
                 var selectTerapentDom = "";
+                var selectDelTypeDom = "";
                 var lastuserupdated = "";
+
+                
+
                 
                 $('#details_appointments').DataTable({
                     "pageLength": 100,
@@ -431,17 +500,60 @@
                 // {
                 //     $("#details_agreements td:contains('" + find + "')").html(replace);
                 // }
+
+                $("#details_appointments tr").on('contextmenu', function(e) {
+                    RowAppIndex = $(this).closest("tr").index();
+                    selector = $(this).closest('tr');
+                    
+                    $('tr').css('box-shadow', 'none');
+                    var top = e.pageY - 330;
+                    var left = e.pageX - 205;
+                    $(this).css('box-shadow', 'inset 1px 1px 0px 0px red, inset -1px -1px 0px 0px red');
+                    $("#appointmentMenu").css({
+                        display: "block",
+                        top: top,
+                        left: left
+                    });
+                    return false; //blocks default Webbrowser right click menu
+                });
+
+                $("#openAppointment").on('click', function(){
+                    showAppointment();
+                    $('#modalAppointment').modal('show');
+                });
+                
+                $("#deleteAppointment").on('click', function(){
+                    
+                    showDelAppointment();
+                    $('#modalDelAppointment').modal('show');
+                });
+
+                $("body").on("click", function() {
+                    if ($("#appointmentMenu").css('display') == 'block') {
+                        $(" #appointmentMenu ").hide();
+                    }
+                    $('td').css('box-shadow', 'none');
+                });
+
+                $("#appointmentMenu a").on("click", function() {
+                    $(this).parent().hide();
+                });
                 
                 function ReplaceCellContent(table, row, col, replace)
                 {
                     $(table)[0].rows[row].cells[col].innerHTML = replace;
+                }
+                
+                function ReplaceRowColor(table, row, color)
+                {
+                    $(table)[0].rows[row].style.color = color;
                 }
 
                 $('#details_agreements td').dblclick(function(){
 
                     RowAgrIndex = $(this).parent().index();
 
-                    var selector = $(this).closest('tr');
+                    selector = $(this).closest('tr');
                     agrNo = selector.find('td:eq(1)').text();
 
                     agrID = agrArray[RowAgrIndex]['id'];
@@ -505,9 +617,12 @@
                 $('#details_appointments td').dblclick(function(){
 
                     RowAppIndex = $(this).parent().index();
-                    var selector = $(this).closest('tr');
-                    
+                    selector = $(this).closest('tr');
+                    showAppointment(selector);
+                    $('#modalAppointment').modal('show');
 
+                });
+                function showAppointment() {
                     var i = 0;
                     appID = appArray[RowAppIndex]['id'];
                     appointmentId = appArray[RowAppIndex]['appointid'];
@@ -659,9 +774,58 @@
                     } else {
                         $('#radioEC').prop( 'checked', true );
                     }
-                    $('#modalAppointment').modal('show');
-                    
+                }
 
+                function showDelAppointment() {
+                    var i = 0;
+                    selectDelTypeDom = "<option value ='-1'> </optoin>";
+                    while(i < delTypesArray.length){
+                        selectDelTypeDom += "<option value = '";
+                        selectDelTypeDom += i;
+                        selectDelTypeDom += "'";
+                        // if(delTypesArray[i]['agreementid'] == selector.find('td:eq(4)').text()){
+                        //     selectDelTypeDom += " selected ";
+                        // }
+                        selectDelTypeDom +=">";
+                        selectDelTypeDom += delTypesArray[i]['Descr'];
+                        selectDelTypeDom += "</option>";
+                        i++;
+                    }
+                    $( "#selectDelTypes" ).empty().append(selectDelTypeDom);
+                }
+                $('#deleteAppointmentbtn').click(function(e){
+                    appdeltype = $("#selectDelTypes").val();
+                    appID = appArray[RowAppIndex]['id'];
+                    RowAppIndex +=1;
+                    $.ajax({
+                        type : "POST",
+                        url : "{{route('backend.updateAppointment')}}",
+                        data : {
+                            type:"delete",
+                            id:appID,
+                            deletiontype : appdeltype,
+                        },
+                        success:function (response) {
+                            var msgType = response.msgType;
+                            var msg = response.msg;
+                            $('#modalDelAppointment').modal('hide');
+                            if (msgType == "success") {
+                                alert(msg);
+                                ReplaceRowColor(appTable,RowAppIndex,'red');
+                            } else {
+                                alert(msg);
+                            }
+
+                        }
+                    });
+                });
+                $('#selectDelTypes').change(function() {
+                    if ($(this).val() != '-1') {
+                        // Do something for option "b"
+                        $('#deleteAppointmentbtn').prop('disabled', false);
+                    } else {
+                        $('#deleteAppointmentbtn').prop('disabled', true);
+                    }
                 });
 
                 $("#updateAgreementbtn").click(function(e){
@@ -787,6 +951,7 @@
                         type : 'POST',
                         url: base_url + '/backend/updateAppointment',
                         data: {
+                            type:"update",
                             id : appID,
                             appointmentId:appointmentId,
                             agreementid:agreementid,
@@ -819,6 +984,7 @@
                 $(".cancelbtn").click(function(){
                     $('#modalAppointment').modal('hide');
                     $('#modalAgreement').modal('hide');
+                    $('#modalDelAppointment').modal('hide');
                 });
                 function groupArr(data, n) {
                         var group = [];
@@ -855,4 +1021,5 @@
         });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"></script>
 @endpush

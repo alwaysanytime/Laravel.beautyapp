@@ -36,17 +36,16 @@ class CalendarController extends Controller
         $customer_id = $request->customer_id;
 
         $data_agr = DB::table('agreements')
-            // ->join("users", "appointments.lastuser", "=", "users.id", "left outer")// KATEGORI RENKLERI
-            ->select("agreements.id","agreements.agreementid","agreements.agreedate","agreements.category","agreements.areas","agreements.notes as agrnotes","agreements.price as agrprice","agreements.therapist as agrtherapist","agreements.payment" ,"agreements.lastuser","agreements.lastupdate")
-            ->where("agreements.agreementid","=", $agreement_id)
-            ->orWhere("agreements.customerid","=",$customer_id)
+            ->select("id","agreementid","agreedate","category","areas","notes as agrnotes","price as agrprice","therapist as agrtherapist","payment" ,"lastuser","lastupdate")
+            ->where("agreementid","=", $agreement_id)
+            ->orWhere("customerid","=",$customer_id)
             ->get();
 
         $data_app = DB::table('appointments')
             // ->join("users", "appointments.lastuser", "=", "users.id", "left outer")// KATEGORI RENKLERI
-            ->select('appointments.id','appointments.appointid',"appointments.agreementid",'appointments.subject',"appointments.customerid", "appointments.starttime", "appointments.endtime", "appointments.notes", "appointments.therapist","appointments.treatments", "appointments.price", "appointments.paymethod", "appointments.paidamount","appointments.appointtype","appointments.sendsms","appointments.nopayment", "appointments.lastupdate","appointments.lastuser", /*"appointtype.Descr","appointtype.color","appointtype.fontcolor"*/)
-            ->where("appointments.customerid","=", $customer_id)
-            ->orderBy('appointments.starttime',"DESC")
+            ->select('id','appointid',"agreementid",'subject',"customerid", "starttime", "endtime", "notes", "therapist","treatments", "price", "paymethod", "paidamount","appointtype","sendsms","nopayment","deleted","deletiontype", "lastupdate","lastuser", /*"appointtype.Descr","appointtype.color","appointtype.fontcolor"*/)
+            ->where("customerid","=", $customer_id)
+            ->orderBy('starttime',"DESC")
             ->get();
         $data_users = DB::table('users')
             ->select('users.name','users.id')
@@ -54,41 +53,57 @@ class CalendarController extends Controller
             ->orderBy('users.id',"ASC")
             ->get();
         $data_apptypes = DB::table('appointtype')
-            ->select('appointtype.id','appointtype.Descr',"appointtype.color","appointtype.fontcolor",)
-            ->where("appointtype.active","=", 1)
-            ->orderBy('appointtype.id',"ASC")
+            ->select('id','Descr',"color","fontcolor",)
+            ->where("active","=", 1)
+            ->orderBy('id',"ASC")
+            ->get();
+        $data_deltypes = DB::table('deletiontype')
+            ->select('id','Descr',)
+            ->where("active","=", 1)
+            ->orderBy('id',"ASC")
             ->get();
         $data_areas = DB::table('areas')
-            ->select('areas.descr',"areas.groupid",)
-            ->where("areas.active","=", 1)
-            ->orderBy('areas.id',"ASC")
+            ->select('descr',"groupid",)
+            ->where("active","=", 1)
+            ->orderBy('id',"ASC")
             ->get();
-        return view("backend.calendar-details", compact(["data_app","data_agr","data_apptypes","data_areas","data_users","customer_id"]));
+        return view("backend.calendar-details", compact(["data_app","data_agr","data_apptypes","data_areas","data_deltypes", "data_users","customer_id"]));
     }
     public function updateAgreement(Request $request){
-        
-        $id = $request->id;
-        $agreementid = $request->agreementid;
-        $agreedate = date_create($request->agreedate);
-        $agreedate = date_format($agreedate,"Y-m-d");
-        $category = $request->category;
-        $areas = $request->areas;
-        $therapist = $request->therapist;
-        $notes = $request->notes;
-        $price = $request->price;
-        
-        
-        date_default_timezone_set("Europe/berlin");
 
-        $data = array(
-            "agreedate" => $agreedate, 
-            "category" => $category,
-            'areas' => $areas, 
-            "therapist" => $therapist,
-            "notes" => $notes,
-            "price" => intval($price), 
-            "lastupdate" => date("Y-m-d H:i:s"),
-        );
+        $type = $request->type;
+        if($type == "update") {
+            $id = $request->id;
+            $agreementid = $request->agreementid;
+            $agreedate = date_create($request->agreedate);
+            $agreedate = date_format($agreedate,"Y-m-d");
+            $category = $request->category;
+            $areas = $request->areas;
+            $therapist = $request->therapist;
+            $notes = $request->notes;
+            $price = $request->price;
+            date_default_timezone_set("Europe/berlin");
+
+            $data = array(
+                "agreedate" => $agreedate, 
+                "category" => $category,
+                'areas' => $areas, 
+                "therapist" => $therapist,
+                "notes" => $notes,
+                "price" => intval($price), 
+                "lastupdate" => date("Y-m-d H:i:s"),
+            );
+        } else if($type =="delete") {
+            $id = $request->id;
+            $deletiontype = $request->deletiontype;
+            date_default_timezone_set("Europe/berlin");
+
+            $data = array(
+                "deleted" => 1, 
+                "deletiontype" => $deletiontype,
+                "lastupdate" => date("Y-m-d H:i:s"),
+            );
+        }
 
         $updatedapp = DB::table('agreements')
         ->where('id', intval($id))
@@ -104,26 +119,55 @@ class CalendarController extends Controller
     }
     
     public function updateAppointment(Request $request){
+        
+        $type = $request->type;
+        if($type == "update") {
+            $id = $request->id;
+            $appointmentId = $request->appointmentId;
+            $agreementid = $request->agreementid;
+            $starttime = date_create($request->starttime);
+            $starttime = date_format($starttime,"Y-m-d H:i:s");
+            $endtime = date_create($request->endtime);
+            $endtime = date_format($endtime,"Y-m-d H:i:s");
+            $therapist = $request->therapist;
+            $textNote = $request->textNote;
+            $treatments = $request->treatments;
+            $inputTotalamount = $request->inputTotalamount;
+            $inputPaidamount = $request->inputPaidamount;
+            $paymethod = $request->paymethod;
+            $sendsms = $request->sendsms;
+            $nopayment = $request->nopayment;
+            
+            $apptype = $request->apptype;
+            
+            date_default_timezone_set("Europe/berlin");
+            $data = array(
+                "agreementid" => intval($agreementid),
+                "starttime" => $starttime, 
+                "endtime" => $endtime,
+                'therapist' => $therapist, 
+                "notes" => $textNote,
+                "treatments" => $treatments,
+                "price" => intval($inputTotalamount), 
+                "paidamount" => intval($inputPaidamount),
+                "paymethod" => intval($paymethod),
+                "sendsms" => intval($sendsms),
+                "nopayment" => intval($nopayment),
+                "lastupdate" => date("Y-m-d H:i:s"),
+            );
 
-        $id = $request->id;
-        $appointmentId = $request->appointmentId;
-        $agreementid = $request->agreementid;
-        $starttime = date_create($request->starttime);
-        $starttime = date_format($starttime,"Y-m-d H:i:s");
-        $endtime = date_create($request->endtime);
-        $endtime = date_format($endtime,"Y-m-d H:i:s");
-        $therapist = $request->therapist;
-        $textNote = $request->textNote;
-        $treatments = $request->treatments;
-        $inputTotalamount = $request->inputTotalamount;
-        $inputPaidamount = $request->inputPaidamount;
-        $paymethod = $request->paymethod;
-        $sendsms = $request->sendsms;
-        $nopayment = $request->nopayment;
+        } else if($type == "delete") {
+            $id = $request->id;
+            $deletiontype = $request->deletiontype;
+            date_default_timezone_set("Europe/berlin");
+
+            $data = array(
+                "deleted" => 1, 
+                "deletiontype" => $deletiontype,
+                "lastupdate" => date("Y-m-d H:i:s"),
+            );
+        }
         
-        $apptype = $request->apptype;
-        
-        date_default_timezone_set("Europe/berlin");
 
         // $updatedapp = DB::table('agreements')
         // ->where('agreementid', intval($agreementid))
@@ -137,22 +181,8 @@ class CalendarController extends Controller
         
         $updatedapp = DB::table('appointments')
         ->where('id', intval($id))
-        ->update([ 
-                    "agreementid" => intval($agreementid),
-                    "starttime" => $starttime, 
-                    "endtime" => $endtime,
-                    'therapist' => $therapist, 
-                    "notes" => $textNote,
-                    "treatments" => $treatments,
-                    "price" => intval($inputTotalamount), 
-                    "paidamount" => intval($inputPaidamount),
-                    "paymethod" => intval($paymethod),
-                    "sendsms" => intval($sendsms),
-                    "nopayment" => intval($nopayment),
-                    "lastupdate" => date("Y-m-d H:i:s"),
-                ]);
+        ->update($data);
         
-
         if ($updatedapp) {
             $res['msgType'] = 'success';
             $res['msg'] = __('Data Updated Successfully');
