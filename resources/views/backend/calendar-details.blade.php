@@ -114,7 +114,7 @@
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <?php $i=0;
+                                    <?php $i=0; 
                                     foreach ($data_app as $appointment):
                                     if($appointment->deleted == 1) { ?>
                                     <tr id="treatment" style="color: red;">
@@ -134,10 +134,12 @@
                                     </tbody>
                                 </table>
                                 <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" id="appointmentMenu">
-                                    <a class="dropdown-item" id = "openAppointment" >Offnen(Open)</a>
-                                    <a class="dropdown-item" id = "deleteAppointment" >Loschen(Delete)</a>
+                                    <a class="dropdown-item" id = "openAppointment" >Offnen</a>
+                                    <a class="dropdown-item" id = "deleteAppointment" >Löschen</a>
                                     <div class = "dropdown-divider"></div>
-                                    <a class="dropdown-item" href="#">unwiderruflich Löschen</a>
+                                    <?php if($data_user[0]->role == 1) {?>
+                                    <a class="dropdown-item" id = "deleteAppointmentbyadmin">unwiderruflich Löschen</a>
+                                    <?php }?>
                                 </div>
                             </div>
                         </div>
@@ -372,15 +374,16 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" id = "updateAppointmentbtn" >Speichern</button>
-                <button type="button" class="btn btn-secondary cancelbtn" >Abbrechen</button>
+                <button type="button" class="btn btn-secondary cancelbtn" id = "btnback" style = "display:none;">Back</button>
+                <button type="button" class="btn btn-secondary cancelbtn" id = "btnabort">Abbrechen</button>
             </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Delete Agreement-->
+    <!-- Modal Delete Appointment-->
     <div class="modal fade" id="modalDelAppointment" tabindex="-1" role="dialog" aria-labelledby="modalDeleteAppointTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalDeleteAppointTitle">Bestatigen</h5>
@@ -393,13 +396,12 @@
                     <div class="col-md-1">
                     </div>
                     <div class="col-md-10">
-                        <p>Mochten Sit</p>
+                        <p>möchten Sie diesen Termin unwiderruflich löschen</p>
                         <p></p>
-                        <p>Maximi</p>
-                        <p>Modal body text goes here.</p>
+                        <p id ="custominfo"></p>
+                        <p>Bitte Löschgrund auswähöen</p>
                         <div class="form-group row">
-                            <label for="staticEmail" class="col-sm-2 col-form-label">Delete Type</label>
-                            <div class="col-sm-10">
+                            <div class="col-sm-12">
                                 <select class="form-control" id="selectDelTypes">
                             </select>
                             </div>
@@ -410,8 +412,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id = "deleteAppointmentbtn" disabled>Speichern</button>
-                <button type="button" class="btn btn-secondary cancelbtn" >Abbrechen</button>
+                <button type="button" class="btn btn-primary" id = "deleteAppointmentbtn" disabled>Ja</button>
+                <button type="button" class="btn btn-secondary cancelbtn" >Nein</button>
             </div>
             </div>
         </div>
@@ -438,6 +440,8 @@
             });
 
             $(document).ready(function () {
+                var data_user = <?php echo json_encode($data_user);?>;
+                var data_customer = <?php echo json_encode($data_customer);?>;
                 var customer_id = <?php echo json_encode($customer_id);?>;
                 var appArray = <?php echo json_encode($data_app);?>;
                 var agrArray = <?php echo json_encode($data_agr);?>;
@@ -483,8 +487,9 @@
                 var selectTerapentDom = "";
                 var selectDelTypeDom = "";
                 var lastuserupdated = "";
-
                 
+
+                var currentDate = new Date();
 
                 
                 $('#details_appointments').DataTable({
@@ -508,7 +513,7 @@
                     $('tr').css('box-shadow', 'none');
                     var top = e.pageY - 330;
                     var left = e.pageX - 205;
-                    $(this).css('box-shadow', 'inset 1px 1px 0px 0px red, inset -1px -1px 0px 0px red');
+                    // $(this).css('box-shadow', 'inset 1px 1px 0px 0px red, inset -1px -1px 0px 0px red');
                     $("#appointmentMenu").css({
                         display: "block",
                         top: top,
@@ -518,16 +523,56 @@
                 });
 
                 $("#openAppointment").on('click', function(){
-                    showAppointment();
-                    $('#modalAppointment').modal('show');
+                    starttime = new Date(selector.find('td:eq(1)').text());
+                    console.log(starttime);
+                    if(currentDate > starttime) {
+                        showAppointment("disabled");
+                        alert("Vergangene Behandlungen können nicht mehr geändert werden");
+                        $('#modalAppointment').modal('show');
+                    } else {
+                        showAppointment("editable");
+                        $('#modalAppointment').modal('show');
+                    }
                 });
                 
                 $("#deleteAppointment").on('click', function(){
+                    textNote = selector.find('td:eq(3)').text();
                     
+                    console.log(textNote);
                     showDelAppointment();
                     $('#modalDelAppointment').modal('show');
                 });
 
+                $("#deleteAppointmentbyadmin").on('click', function(){
+                    let text = "möchten Sie diesen Termin unwiderruflich löschen";
+                    appID = appArray[RowAppIndex]['id'];
+                    RowAppIndex +=1;
+                    if (confirm(text) == true) {
+                                RemoveAppNode(appID);
+                                
+                        $.ajax({
+                        type : "POST",
+                        url : "{{route('backend.deleteAppointment')}}",
+                        data : {
+                            id:appID,
+                        },
+                        success:function (response) {
+                            var msgType = response.msgType;
+                            var msg = response.msg;
+                            if (msgType == "success") {
+                                alert(msg);
+                                removeRowByID(appTable,RowAppIndex);
+                                
+                            } else {
+                                alert(msg);
+                            }
+
+                        }
+                    });
+                    } else {
+                        text = "You canceled!";
+                    }
+                });
                 $("body").on("click", function() {
                     if ($("#appointmentMenu").css('display') == 'block') {
                         $(" #appointmentMenu ").hide();
@@ -539,14 +584,27 @@
                     $(this).parent().hide();
                 });
                 
-                function ReplaceCellContent(table, row, col, replace)
+                function replaceCellContent(table, row, col, replace)
                 {
                     $(table)[0].rows[row].cells[col].innerHTML = replace;
                 }
                 
-                function ReplaceRowColor(table, row, color)
+                function replaceRowContenetColor(table, row, color)
                 {
                     $(table)[0].rows[row].style.color = color;
+                }
+                function removeRowByID(table, row)
+                {
+                    $(table)[0].rows[row].remove();
+                    // $(table).refresh ();
+                }
+                function RemoveAppNode(id){
+                    appArray.forEach(function(e, index){
+                    if(id == e.id){
+                        appArray.splice(index, 1);
+                    }
+                    })
+                    console.log("after appArray",appArray);
                 }
 
                 $('#details_agreements td').dblclick(function(){
@@ -618,11 +676,21 @@
 
                     RowAppIndex = $(this).parent().index();
                     selector = $(this).closest('tr');
-                    showAppointment(selector);
-                    $('#modalAppointment').modal('show');
+
+                    starttime = new Date(selector.find('td:eq(1)').text());
+                    console.log(starttime,currentDate);
+                    if(currentDate > starttime) {
+                        showAppointment("disabled");
+                        alert("Vergangene Behandlungen können nicht mehr geändert werden!");
+                        $('#modalAppointment').modal('show');
+                    } else {
+                        showAppointment("editable");
+                        $('#modalAppointment').modal('show');
+                    }
+                    
 
                 });
-                function showAppointment() {
+                function showAppointment(status) {
                     var i = 0;
                     appID = appArray[RowAppIndex]['id'];
                     appointmentId = appArray[RowAppIndex]['appointid'];
@@ -671,8 +739,9 @@
                         i++;
                     }
                     $( "#selectCategory" ).empty().append(selectCategoryDom);
+                    
 
-                    var i = 0;
+                    i = 0;
                     
                     
                     while (i < appArray.length) {
@@ -688,7 +757,7 @@
                     therapist = selector.find('td:eq(2)').text();
                     $("#selectTherapist").val(therapist);
                     
-                    textNote = appArray[RowAppIndex]['notes'];
+                    // textNote = appArray[RowAppIndex]['notes'];
                     textNote = selector.find('td:eq(3)').text();
                     $("#textNote").val(textNote);
 
@@ -774,11 +843,61 @@
                     } else {
                         $('#radioEC').prop( 'checked', true );
                     }
+                    if(status =="disabled") {
+                        $( "#selectAgreement" ).prop('disabled', true);
+                        $( "#datepicker" ).prop('disabled', true);
+                        $( "#starttimepicker" ).prop('disabled', true);
+                        $( "#endtimepicker" ).prop('disabled', true);
+                        $( "#selectCategory" ).prop('disabled', true);
+                        $( "#inputArea" ).prop('disabled', true);
+                        $( "#selectTherapist" ).prop('disabled', true);
+                        $( "#textNote" ).prop('disabled', true);
+                        $( "#checksms" ).prop('disabled', true);
+                        $( "#checknopayment" ).prop('disabled', true);
+                        $( "#lblupdated" ).prop('disabled', true);
+                        $( "#checktreatment" ).prop('disabled', true);
+                        $( "#inputms" ).prop('disabled', true);
+                        $( "#tbltreatment").find("input").prop('disabled', true);
+                        $( "#inputTotalamount" ).prop('disabled', true);
+                        $( "#inputPaidamount" ).prop('disabled', true);
+                        $( "#radioBar" ).prop('disabled', true);
+                        $( "#radioEC" ).prop('disabled', true);
+                        $( "#updateAppointmentbtn").hide();
+                        $( "#btnabort").hide();
+                        $( "#btnback").show();
+
+                        
+                    } else {
+                        $( "#selectAgreement" ).prop('disabled', false);
+                        $( "#datepicker" ).prop('disabled', false);
+                        $( "#starttimepicker" ).prop('disabled', false);
+                        $( "#endtimepicker" ).prop('disabled', false);
+                        $( "#selectCategory" ).prop('disabled', false);
+                        $( "#inputArea" ).prop('disabled', false);
+                        $( "#selectTherapist" ).prop('disabled', false);
+                        $( "#textNote" ).prop('disabled', false);
+                        $( "#checksms" ).prop('disabled', false);
+                        $( "#checknopayment" ).prop('disabled', false);
+                        $( "#lblupdated" ).prop('disabled', false);
+                        $( "#checktreatment" ).prop('disabled', false);
+                        $( "#inputms" ).prop('disabled', false);
+                        $( "#tbltreatment").find("input").prop('disabled', false);
+                        $( "#inputTotalamount" ).prop('disabled', false);
+                        $( "#inputPaidamount" ).prop('disabled', false);
+                        $( "#radioBar" ).prop('disabled', false);
+                        $( "#radioEC" ).prop('disabled', false);
+                        $( "#updateAppointmentbtn").show();
+                        $( "#btnabort").show();
+                        $( "#btnback").hide();
+                    }
                 }
 
                 function showDelAppointment() {
                     var i = 0;
-                    selectDelTypeDom = "<option value ='-1'> </optoin>";
+                    var custominfo = data_customer[0]['firstname'] + " " + data_customer[0]['lastname']  + " " + new Date(appArray[RowAppIndex]['starttime']).toLocaleTimeString() + " - " + new Date(appArray[RowAppIndex]['endtime']).toLocaleTimeString();
+
+                    $("#custominfo").text(custominfo);
+                    selectDelTypeDom = "<option value ='-1'>Freier Text</optoin>";
                     while(i < delTypesArray.length){
                         selectDelTypeDom += "<option value = '";
                         selectDelTypeDom += i;
@@ -794,16 +913,22 @@
                     $( "#selectDelTypes" ).empty().append(selectDelTypeDom);
                 }
                 $('#deleteAppointmentbtn').click(function(e){
+                    console.log("RowAppIndex",RowAppIndex);
                     appdeltype = $("#selectDelTypes").val();
+                    textNote = "<div>Grund für Löschung: " + delTypesArray[appdeltype]["Descr"] + "</div><div>" + textNote + "</div>";
+                    
+                    console.log("textNote",textNote);
                     appID = appArray[RowAppIndex]['id'];
                     RowAppIndex +=1;
+                    replaceCellContent(appTable,RowAppIndex,3,textNote);
                     $.ajax({
                         type : "POST",
                         url : "{{route('backend.updateAppointment')}}",
                         data : {
                             type:"delete",
                             id:appID,
-                            deletiontype : appdeltype,
+                            deletiontype : delTypesArray[appdeltype]["id"],
+                            notes: textNote
                         },
                         success:function (response) {
                             var msgType = response.msgType;
@@ -811,7 +936,7 @@
                             $('#modalDelAppointment').modal('hide');
                             if (msgType == "success") {
                                 alert(msg);
-                                ReplaceRowColor(appTable,RowAppIndex,'red');
+                                replaceRowContenetColor(appTable,RowAppIndex,'red');
                             } else {
                                 alert(msg);
                             }
@@ -834,24 +959,24 @@
                     
                     RowAgrIndex += 1;
                     agrDate = $("#agrdatepicker").val();
-                    ReplaceCellContent(agrTable,RowAgrIndex,2,agrDate);
+                    replaceCellContent(agrTable,RowAgrIndex,2,agrDate);
 
                     apptype = $("#selectAgrCategory").val(); 
                     apptype = apptypesArray[apptype]['Descr'];
-                    ReplaceCellContent(agrTable,RowAgrIndex,3,apptype);
+                    replaceCellContent(agrTable,RowAgrIndex,3,apptype);
 
                     agrTherapist = $("#inputAgrTherapist").val();
-                    // ReplaceCellContent(table,RowAgrIndex,4,agrTherapist);
+                    // replaceCellContent(table,RowAgrIndex,4,agrTherapist);
 
                     agrArea = $("#inputAgrArea").val();
-                    ReplaceCellContent(agrTable,RowAgrIndex,4,agrArea);
+                    replaceCellContent(agrTable,RowAgrIndex,4,agrArea);
 
                     agrNote = $("#textAgrNote").val();
-                    ReplaceCellContent(agrTable,RowAgrIndex,5,agrNote);
+                    replaceCellContent(agrTable,RowAgrIndex,5,agrNote);
 
                     var agrTotalamountori = agrTotalamount;
                     agrTotalamount = $("#inputAgrTotalamount").val();
-                    ReplaceCellContent(agrTable,RowAgrIndex,6,agrTotalamount);
+                    replaceCellContent(agrTable,RowAgrIndex,6,agrTotalamount);
 
                     agrLastuserupdated = "";
 
@@ -890,7 +1015,7 @@
                     RowAppIndex += 1;
                     agreementid = $("#selectAgreement").val(); 
                     agreementid = agrArray[agreementid]['agreementid'];
-                    ReplaceCellContent(appTable,RowAppIndex,4,agreementid);
+                    replaceCellContent(appTable,RowAppIndex,4,agreementid);
 
                     var getendtime = $("#datepicker").val() + " "+$('#endtimepicker').val();
                     endtime = getendtime + ":00";
@@ -900,19 +1025,19 @@
                     var starttime1 = new Date(starttime);
                     var dateStringWithTime = moment(starttime1).format('MM.DD.YYYY HH:mm:ss');
 
-                    ReplaceCellContent(appTable,RowAppIndex,1,dateStringWithTime);
+                    replaceCellContent(appTable,RowAppIndex,1,dateStringWithTime);
 
                     therapist = $("#selectTherapist").val();
-                    ReplaceCellContent(appTable,RowAppIndex,2,therapist);
+                    replaceCellContent(appTable,RowAppIndex,2,therapist);
 
                     textNote =  $("#textNote").val();
-                    ReplaceCellContent(appTable,RowAppIndex,3,textNote);
+                    replaceCellContent(appTable,RowAppIndex,3,textNote);
 
                     inputTotalamount = $("#inputTotalamount").val();
-                    ReplaceCellContent(appTable,RowAppIndex,6,inputTotalamount);
+                    replaceCellContent(appTable,RowAppIndex,6,inputTotalamount);
 
                     inputPaidamount = $("#inputPaidamount").val();
-                    ReplaceCellContent(appTable,RowAppIndex,7,inputPaidamount);
+                    replaceCellContent(appTable,RowAppIndex,7,inputPaidamount);
 
                     sendsms = $('#checksms').is(":checked")? 1 : 0;
                     nopayment = $('#checknopayment').is(":checked")? 1 : 0;
@@ -945,7 +1070,7 @@
                             }
                         }
                     }
-                    ReplaceCellContent(appTable,RowAppIndex,5,treatments);
+                    replaceCellContent(appTable,RowAppIndex,5,treatments);
 
                     $.ajax({
                         type : 'POST',

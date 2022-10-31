@@ -3,7 +3,7 @@
 
 namespace App\Http\Controllers\Backend;
 
-
+use Auth;
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -34,6 +34,12 @@ class CalendarController extends Controller
             $agreement_id = 1;
         }
         $customer_id = $request->customer_id;
+        $userId = Auth::id();
+        
+        $data_user = DB::table('users')
+            ->select('id','name','username','role')
+            ->where("id","=", $userId)
+            ->get();
 
         $data_agr = DB::table('agreements')
             ->select("id","agreementid","agreedate","category","areas","notes as agrnotes","price as agrprice","therapist as agrtherapist","payment" ,"lastuser","lastupdate")
@@ -52,6 +58,10 @@ class CalendarController extends Controller
             ->where("users.active","=", 1)
             ->orderBy('users.id',"ASC")
             ->get();
+        $data_customer = DB::table('customers')
+            ->select('firstname','lastname')
+            ->where("id","=", $customer_id)
+            ->get();
         $data_apptypes = DB::table('appointtype')
             ->select('id','Descr',"color","fontcolor",)
             ->where("active","=", 1)
@@ -67,7 +77,7 @@ class CalendarController extends Controller
             ->where("active","=", 1)
             ->orderBy('id',"ASC")
             ->get();
-        return view("backend.calendar-details", compact(["data_app","data_agr","data_apptypes","data_areas","data_deltypes", "data_users","customer_id"]));
+        return view("backend.calendar-details", compact(["data_user","data_app","data_agr","data_apptypes","data_areas","data_deltypes", "data_users","data_customer","customer_id"]));
     }
     public function updateAgreement(Request $request){
 
@@ -158,26 +168,17 @@ class CalendarController extends Controller
 
         } else if($type == "delete") {
             $id = $request->id;
+            $notes = $request->notes;
             $deletiontype = $request->deletiontype;
             date_default_timezone_set("Europe/berlin");
 
             $data = array(
                 "deleted" => 1, 
+                "notes" => $notes,
                 "deletiontype" => $deletiontype,
                 "lastupdate" => date("Y-m-d H:i:s"),
             );
         }
-        
-
-        // $updatedapp = DB::table('agreements')
-        // ->where('agreementid', intval($agreementid))
-        // ->update([ 
-        //             "notes" => $textNote,
-        //             "treatments" => $treatments,
-        //             "price" => intval($inputTotalamount), 
-        //             "paidamount" => intval($inputPaidamount),
-        //             "lastupdate" => date("Y-m-d H:i:s"),
-        //         ]);
         
         $updatedapp = DB::table('appointments')
         ->where('id', intval($id))
@@ -189,6 +190,20 @@ class CalendarController extends Controller
         } else {
             $res['msgType'] = 'error';
             $res['msg'] = __('Data update failed');
+        }
+        return response()->json($res);
+    }
+    public function deleteAppointment(Request $request){
+        $id = $request->id;
+        $deletedapp = DB::table('appointments')
+        ->where('id', intval($id))
+        ->delete();
+        if ($deletedapp) {
+            $res['msgType'] = 'success';
+            $res['msg'] = __('Data Removed Successfully');
+        } else {
+            $res['msgType'] = 'error';
+            $res['msg'] = __('Data remove failed');
         }
         return response()->json($res);
     }
